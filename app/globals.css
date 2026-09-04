@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-900: #0f0d0b;
+  --color-ink-800: #171310;
+  --color-ink-700: #211b16;
+  --color-ink-600: #2e251e;
+  --color-ink-500: #3d3128;
+  --color-parchment: #efe3cf;
+  --color-parchment-dim: #bfae94;
+  --color-ember: #d8763a;
+  --color-ember-dim: #a2542450;
+  --color-gold: #d9b45b;
+  --color-moss: #6f9c5a;
+  --color-blood: #b3453c;
+
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(1100px 500px at 15% -10%, #241c15 0%, transparent 60%),
+    radial-gradient(900px 480px at 95% 0%, #1d2119 0%, transparent 55%),
+    var(--color-ink-900);
+  color: var(--color-parchment);
+}
+
+/* Inputs sitting on top of the sheet artwork: invisible until touched, so the
+   scan of the page still reads as the printed sheet. */
+.sheet-input {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  color: #10233f;
+  font-family: Helvetica, Arial, sans-serif;
+  line-height: 1;
+  padding: 0 1px;
+  margin: 0;
+  outline: none;
+  border-radius: 2px;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+.sheet-input:hover {
+  background: rgba(216, 118, 58, 0.12);
+}
+.sheet-input:focus {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 2px var(--color-ember);
+}
+.sheet-input.is-filled {
+  background: rgba(111, 156, 90, 0.07);
+}
+
+textarea.sheet-input {
+  resize: none;
+  overflow: hidden;
+}
+
+/* Role-assignment mode: every field is a visible, clickable target. */
+.sheet-pick {
+  position: absolute;
+  border: 1px solid rgba(216, 118, 58, 0.55);
+  background: rgba(216, 118, 58, 0.14);
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+.sheet-pick:hover {
+  background: rgba(216, 118, 58, 0.4);
+}
+.sheet-pick[data-assigned="true"] {
+  border-color: var(--color-gold);
+  background: rgba(217, 180, 91, 0.45);
+}

@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A character occupies exactly one row on the roster.
+enum Status {
+  ACTIVE_PARTY
+  ALIVE
+  DEAD
+}
+
+/// A blank fillable sheet. Uploads are immutable: revising a sheet creates a
+/// new Template so existing characters keep rendering against the one they
+/// were built on.
+model Template {
+  id         String          @id @default(cuid())
+  name       String
+  pdf        Bytes
+  pageCount  Int
+  pageSizes  Json
+  fields     TemplateField[]
+  characters Character[]
+  createdAt  DateTime        @default(now())
+}
+
+/// One widget of one AcroForm field, with geometry already converted to a
+/// CSS top-left origin so the editor can position an input directly.
+model TemplateField {
+  id          String   @id @default(cuid())
+  templateId  String
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  pdfName     String
+  widgetIndex Int      @default(0)
+  page        Int
+  x           Float
+  y           Float
+  w           Float
+  h           Float
+  type        String
+  options     Json?
+  maxLen      Int?
+  order       Int
+  role        String?
+
+  @@unique([templateId, pdfName, widgetIndex])
+  @@index([templateId, order])
+}
+
+/// A member of the group. There are no logins; this is just a label.
+model Owner {
+  id         String      @id @default(cuid())
+  name       String      @unique
+  color      String?
+  characters Character[]
+  documents  Document[]
+}
+
+model Character {
+  id          String   @id @default(cuid())
+  templateId  String
+  template    Template @relation(fields: [templateId], references: [id])
+  ownerId     String
+  owner       Owner    @relation(fields: [ownerId], references: [id])
+  status      Status   @default(ALIVE)
+  /// Denormalised from the field carrying the displayName role, for the roster.
+  displayName String
+  /// Denormalised roster summary: { species, classLevel, hp, xp }.
+  summary     Json
+  /// The sheet itself: { [pdfFieldName]: value }.
+  values      Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([ownerId])
+}
+
+/// What a document actually is. A PDF and a board hold uploaded bytes; a link
+/// only points somewhere else.
+enum DocKind {
+  PDF
+  LINK
+  BOARD
+}
+
+/// Campaign material: handouts, maps, reference links, image boards.
+model Document {
+  id        String   @id @default(cuid())
+  kind      DocKind
+  title     String
+  note      String?
+  ownerId   String?
+  owner     Owner?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  /// PDF only.
+  fileId    String?
+  file      StoredFile? @relation(fields: [fileId], references: [id])
+  pageCount Int?
+  pageSizes Json?
+
+  /// LINK only.
+  url       String?
+
+  /// BOARD only.
+  items     BoardItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+}
+
+/// Uploaded bytes. Kept behind lib/storage.ts so the backing store can change
+/// to object storage without touching anything that reads or writes files.
+model StoredFile {
+  id         String      @id @default(cuid())
+  /// Path relative to UPLOAD_DIR. Files live on disk; only metadata is in the
+  /// database, so the database stays small however many images get pinned.
+  storageKey String?
+  /// Bytes for rows created before files moved to disk. Kept so nothing breaks
+  /// mid-migration; scripts/migrate-files-to-disk.mts empties it.
+  bytes      Bytes?
+  mimeType   String
+  size       Int
+  fileName   String
+  width      Int?
+  height     Int?
+  createdAt  DateTime    @default(now())
+  documents  Document[]
+  boardItems BoardItem[]
+}
+
+/// One image pinned to a board, at the position and size it was left.
+model BoardItem {
+  id         String     @id @default(cuid())
+  documentId String
+  document   Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  fileId     String
+  file       StoredFile @relation(fields: [fileId], references: [id])
+  x          Float
+  y          Float
+  w          Float
+  h          Float
+  z          Int        @default(0)
+  caption    String?
+
+  @@index([documentId])
+}

@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vault}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-dndvault}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vault} -d ${POSTGRES_DB:-dndvault}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Runs to completion before the app starts, so the schema is always current.
+  migrate:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+      UPLOAD_DIR: /data/uploads
+      NEXT_PUBLIC_MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-50}
+    volumes:
+      - uploads:/data
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # Bound to localhost by default; the tunnel reaches the app over the compose
+    # network, not this port. Set APP_BIND=0.0.0.0:3000 to also allow your LAN in.
+    ports:
+      - "${APP_BIND:-127.0.0.1:3000}:3000"
+
+  # Dials out to Cloudflare, so nothing needs opening on your router.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      - app
+
+volumes:
+  db-data:
+  uploads:
