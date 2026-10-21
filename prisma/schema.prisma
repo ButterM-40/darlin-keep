@@ -73,6 +73,8 @@ model Character {
   summary     Json
   /// The sheet itself: { [pdfFieldName]: value }.
   values      Json
+  blacksmith  Blacksmith?
+  notebooks   Notebook[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -150,4 +152,52 @@ model BoardItem {
   caption    String?
 
   @@index([documentId])
+}
+
+/// A character who works the forge. Shared by the whole party, unlike the
+/// forge's house rules, which each browser keeps for itself.
+model Blacksmith {
+  id          String       @id @default(cuid())
+  characterId String       @unique
+  character   Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  level       Int          @default(1)
+  /// Crafting tokens used this week.
+  tokensSpent Int          @default(0)
+  /// Tokens already owed against next week, from repairs made on the road.
+  tokenDebt   Int          @default(0)
+  /// Ingots on hand: { [metal]: count }.
+  stock       Json         @default("{}")
+  /// Smithing check inputs: { str, wis, int, skill, other, mastery }.
+  modifiers   Json         @default("{}")
+  entries     ForgeEntry[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+/// One recorded craft or repair attempt.
+model ForgeEntry {
+  id           String     @id @default(cuid())
+  blacksmithId String
+  blacksmith   Blacksmith @relation(fields: [blacksmithId], references: [id], onDelete: Cascade)
+  action       String
+  result       String
+  tokens       Int
+  /// As shown in the history, e.g. "4 Bronze".
+  ingots       String
+  createdAt    DateTime   @default(now())
+
+  @@index([blacksmithId, createdAt])
+}
+
+/// A character's own notes: session logs, NPCs, quests, anything free-form.
+model Notebook {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  title       String
+  body        String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([characterId, createdAt])
 }

@@ -55,6 +55,12 @@ export default async function CharacterSheetPage({
 
         <div className="ml-auto flex gap-2">
           <Link
+            href={`/characters/${character.id}/notebooks`}
+            className="rounded-md border border-ink-500 px-3 py-1.5 text-sm text-parchment hover:border-ember"
+          >
+            Notebooks
+          </Link>
+          <Link
             href={`/characters/${character.id}`}
             className="rounded-md border border-ink-500 px-3 py-1.5 text-sm text-parchment hover:border-ember"
           >

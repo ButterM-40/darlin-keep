@@ -37,6 +37,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               <Link className="hover:text-parchment" href="/documents">
                 Documents
               </Link>
+              <Link className="hover:text-parchment" href="/forge">
+                Forge
+              </Link>
               <Link className="hover:text-parchment" href="/owners">
                 Players
               </Link>

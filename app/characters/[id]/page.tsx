@@ -18,6 +18,7 @@ export default async function EditCharacterPage({
     where: { id },
     include: {
       owner: true,
+      _count: { select: { notebooks: true } },
       template: {
         select: {
           id: true,
@@ -65,8 +66,17 @@ export default async function EditCharacterPage({
           {character.owner.name}
         </span>
         <Link
-          href={`/characters/${character.id}/sheet`}
+          href={`/characters/${character.id}/notebooks`}
           className="ml-auto rounded-md border border-ink-500 px-3 py-1.5 text-sm text-parchment hover:border-ember"
+        >
+          Notebooks
+          {character._count.notebooks ? (
+            <span className="ml-1.5 text-parchment-dim">{character._count.notebooks}</span>
+          ) : null}
+        </Link>
+        <Link
+          href={`/characters/${character.id}/sheet`}
+          className="rounded-md border border-ink-500 px-3 py-1.5 text-sm text-parchment hover:border-ember"
         >
           Full sheet
         </Link>

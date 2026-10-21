@@ -103,19 +103,19 @@ export function DocumentList({ initial }: { initial: DocumentRow[] }) {
               key={doc.id}
               className="group relative flex flex-col rounded-xl border border-ink-600/70 bg-ink-800/60 p-4 transition hover:border-ember/50"
             >
-              <Link href={`/documents/${doc.id}`} className="min-w-0">
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span aria-hidden className="text-parchment-dim/70">
                     {ICONS[doc.kind]}
                   </span>
                   <h3 className="truncate font-[family-name:var(--font-display)] text-lg text-parchment">
-                    {doc.title}
+                    <CardLink doc={doc} />
                   </h3>
                 </div>
                 {doc.note ? (
                   <p className="mt-1 line-clamp-2 text-sm text-parchment-dim">{doc.note}</p>
                 ) : null}
-              </Link>
+              </div>
 
               <div className="mt-3 flex items-center gap-2 border-t border-ink-600/60 pt-3 text-xs text-parchment-dim/70">
                 <span>
@@ -139,7 +139,7 @@ export function DocumentList({ initial }: { initial: DocumentRow[] }) {
                 <button
                   type="button"
                   onClick={() => remove(doc.id)}
-                  className="ml-auto rounded-md px-1.5 py-0.5 text-parchment-dim/40 opacity-0 transition hover:text-blood focus:opacity-100 group-hover:opacity-100"
+                  className="relative z-10 ml-auto rounded-md px-1.5 py-0.5 text-parchment-dim/40 opacity-0 transition hover:text-blood focus:opacity-100 group-hover:opacity-100"
                 >
                   Delete
                 </button>
@@ -149,5 +149,26 @@ export function DocumentList({ initial }: { initial: DocumentRow[] }) {
         </ul>
       )}
     </div>
+  );
+}
+
+/**
+ * The card's one link, stretched over the whole card so a click anywhere goes
+ * straight to the document. A link document opens its site directly instead
+ * of an intermediate page that only holds the address.
+ */
+function CardLink({ doc }: { doc: DocumentRow }) {
+  const className = "outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-ember";
+  if (doc.kind === "LINK" && doc.url) {
+    return (
+      <a href={doc.url} target="_blank" rel="noopener noreferrer" className={className}>
+        {doc.title}
+      </a>
+    );
+  }
+  return (
+    <Link href={`/documents/${doc.id}`} className={className}>
+      {doc.title}
+    </Link>
   );
 }
