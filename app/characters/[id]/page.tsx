@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { asFieldValues } from "@/lib/characters";
+import { PortraitPicker } from "@/components/PortraitPicker";
+import { PortraitShowcase } from "@/components/PortraitShowcase";
 import { SheetEditor, type EditorField } from "@/components/SheetEditor";
 import type { PageSize } from "@/components/SheetSurface";
 
@@ -51,7 +53,9 @@ export default async function EditCharacterPage({
   const hasName = character.template.fields.some((f) => f.role === "displayName");
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="relative mx-auto max-w-4xl">
+      <PortraitShowcase fileId={character.portraitFileId} name={character.displayName} />
+
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <Link href="/" className="text-sm text-parchment-dim hover:text-parchment">
           ← Roster
@@ -61,7 +65,7 @@ export default async function EditCharacterPage({
         </h1>
         <span
           className="rounded-full px-2 py-0.5 text-[11px] font-medium text-ink-900"
-          style={{ background: character.owner.color ?? "#8a7f6d" }}
+          style={{ background: character.owner.color ?? "var(--color-owner-default)" }}
         >
           {character.owner.name}
         </span>
@@ -80,6 +84,7 @@ export default async function EditCharacterPage({
         >
           Full sheet
         </Link>
+        <PortraitPicker characterId={character.id} portraitFileId={character.portraitFileId} />
       </div>
 
       {!hasName ? (

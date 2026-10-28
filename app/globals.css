@@ -13,6 +13,10 @@
   --color-gold: #d9b45b;
   --color-moss: #6f9c5a;
   --color-blood: #b3453c;
+  --color-cork: #2a2118;
+  --color-owner-default: #8a7f6d;
+  --color-glow-1: #241c15;
+  --color-glow-2: #1d2119;
 
   --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
@@ -23,11 +27,17 @@
 
 body {
   background:
-    radial-gradient(1100px 500px at 15% -10%, #241c15 0%, transparent 60%),
-    radial-gradient(900px 480px at 95% 0%, #1d2119 0%, transparent 55%),
+    radial-gradient(1100px 500px at 15% -10%, var(--color-glow-1) 0%, transparent 60%),
+    radial-gradient(900px 480px at 95% 0%, var(--color-glow-2) 0%, transparent 55%),
     var(--color-ink-900);
+  /* The glows are sized to the first screen; repeating them drew a seam with a
+     fresh glow under it every viewport height down a long page. */
+  background-repeat: no-repeat;
   color: var(--color-parchment);
 }
+
+/* The active theme overrides the @theme values above from a <style> tag the
+   layout writes (see lib/themes.ts), so every utility class follows it. */
 
 /* Inputs sitting on top of the sheet artwork: invisible until touched, so the
    scan of the page still reads as the printed sheet. */
@@ -45,14 +55,14 @@ body {
   transition: background-color 120ms ease, box-shadow 120ms ease;
 }
 .sheet-input:hover {
-  background: rgba(216, 118, 58, 0.12);
+  background: color-mix(in srgb, var(--color-ember) 12%, transparent);
 }
 .sheet-input:focus {
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 0 0 2px var(--color-ember);
 }
 .sheet-input.is-filled {
-  background: rgba(111, 156, 90, 0.07);
+  background: color-mix(in srgb, var(--color-moss) 7%, transparent);
 }
 
 textarea.sheet-input {
@@ -63,16 +73,191 @@ textarea.sheet-input {
 /* Role-assignment mode: every field is a visible, clickable target. */
 .sheet-pick {
   position: absolute;
-  border: 1px solid rgba(216, 118, 58, 0.55);
-  background: rgba(216, 118, 58, 0.14);
+  border: 1px solid color-mix(in srgb, var(--color-ember) 55%, transparent);
+  background: color-mix(in srgb, var(--color-ember) 14%, transparent);
   border-radius: 2px;
   cursor: pointer;
   padding: 0;
 }
 .sheet-pick:hover {
-  background: rgba(216, 118, 58, 0.4);
+  background: color-mix(in srgb, var(--color-ember) 40%, transparent);
 }
 .sheet-pick[data-assigned="true"] {
   border-color: var(--color-gold);
-  background: rgba(217, 180, 91, 0.45);
+  background: color-mix(in srgb, var(--color-gold) 45%, transparent);
+}
+
+/* Theme decorations. A theme only names which sets to switch on; each set is a
+   custom property the theme style sets to "block", so nothing here is in the
+   theme file itself. They ignore the pointer and never cover a control. */
+.fx {
+  pointer-events: none;
+  display: none;
+}
+.fx-cobwebs {
+  display: var(--fx-cobwebs, none);
+}
+.fx-pumpkins {
+  display: var(--fx-pumpkins, none);
+}
+.fx-bats {
+  display: var(--fx-bats, none);
+}
+.fx svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fx-web {
+  position: fixed;
+  top: 0;
+  width: 110px;
+  height: 110px;
+  z-index: 30;
+  color: color-mix(in srgb, var(--color-parchment-dim) 45%, transparent);
+}
+.fx-web.fx-left {
+  left: 0;
+}
+.fx-web.fx-right {
+  right: 0;
+  transform: scaleX(-1);
+}
+.fx-web.fx-card {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  right: 0;
+  z-index: 20;
+  transform: scaleX(-1);
+}
+.fx-spider {
+  position: fixed;
+  top: 0;
+  right: 46px;
+  width: 14px;
+  z-index: 30;
+  transform-origin: top center;
+  animation: fx-dangle 5s ease-in-out infinite;
+  color: var(--color-parchment-dim);
+}
+.fx-spider .fx-thread {
+  display: block;
+  width: 1px;
+  height: 64px;
+  margin: 0 auto;
+  background: color-mix(in srgb, var(--color-parchment-dim) 55%, transparent);
+}
+.fx-spider svg {
+  height: 14px;
+}
+.fx-bat {
+  position: fixed;
+  z-index: 30;
+  width: 30px;
+  height: 15px;
+  color: color-mix(in srgb, var(--color-parchment-dim) 90%, transparent);
+  animation: fx-flit 9s ease-in-out infinite;
+}
+.fx-bat svg {
+  animation: fx-flap 0.35s ease-in-out infinite alternate;
+}
+.fx-bat.fx-b1 {
+  top: 70px;
+  right: 22%;
+}
+.fx-bat.fx-b2 {
+  top: 98px;
+  right: 12%;
+  width: 22px;
+  height: 11px;
+  animation-delay: -3s;
+}
+.fx-bat.fx-b3 {
+  top: 56px;
+  right: 34%;
+  width: 18px;
+  height: 9px;
+  animation-delay: -6s;
+}
+.fx-inline {
+  width: 22px;
+  height: 20px;
+  margin-right: 6px;
+  vertical-align: -3px;
+}
+.fx-pumpkins.fx-inline {
+  display: var(--fx-pumpkins-inline, none);
+}
+.fx-patch {
+  position: fixed;
+  right: 18px;
+  bottom: 0;
+  z-index: 30;
+  align-items: flex-end;
+  gap: 2px;
+}
+.fx-pumpkins.fx-patch {
+  display: var(--fx-pumpkins-flex, none);
+}
+.fx-patch i {
+  display: block;
+}
+.fx-patch i:nth-child(1) {
+  width: 34px;
+  height: 30px;
+}
+.fx-patch i:nth-child(2) {
+  width: 50px;
+  height: 44px;
+}
+.fx-patch i:nth-child(3) {
+  width: 28px;
+  height: 25px;
+}
+@keyframes fx-dangle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(14px) rotate(3deg);
+  }
+}
+@keyframes fx-flit {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-30px, -10px);
+  }
+  50% {
+    transform: translate(-10px, 8px);
+  }
+  75% {
+    transform: translate(20px, -6px);
+  }
+}
+@keyframes fx-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0.45);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-spider,
+  .fx-bat,
+  .fx-bat svg {
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .fx-web {
+    width: 64px;
+    height: 64px;
+  }
 }

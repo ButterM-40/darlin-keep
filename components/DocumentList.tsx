@@ -14,6 +14,8 @@ export interface DocumentRow {
   pageCount: number | null;
   itemCount: number;
   owner: { name: string; color: string | null } | null;
+  /** Shown in every campaign rather than just this one. */
+  shared: boolean;
   updatedAt: string;
 }
 
@@ -130,9 +132,14 @@ export function DocumentList({ initial }: { initial: DocumentRow[] }) {
                     <span
                       aria-hidden
                       className="size-2 rounded-full"
-                      style={{ background: doc.owner.color ?? "#8a7f6d" }}
+                      style={{ background: doc.owner.color ?? "var(--color-owner-default)" }}
                     />
                     {doc.owner.name}
+                  </span>
+                ) : null}
+                {doc.shared ? (
+                  <span className="rounded-full bg-gold/10 px-1.5 py-0.5 text-gold/80">
+                    All campaigns
                   </span>
                 ) : null}
 

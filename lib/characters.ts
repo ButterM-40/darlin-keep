@@ -3,6 +3,7 @@ import type { Status } from "@/lib/status";
 import { prisma } from "@/lib/db";
 import { fillTemplate, type FieldValues } from "@/lib/pdf/fillTemplate";
 import { deriveDisplay } from "@/lib/roles";
+import { deleteFileIfOrphaned } from "@/lib/storage";
 
 export function asFieldValues(value: unknown): FieldValues {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -21,9 +22,11 @@ async function roleFields(templateId: string) {
   });
 }
 
+/** Creates a character on one campaign's roster, in the given row. */
 export async function createCharacter(input: {
   templateId: string;
   ownerId: string;
+  campaignId: string;
   status?: Status;
   values?: FieldValues;
 }) {
@@ -37,7 +40,9 @@ export async function createCharacter(input: {
     data: {
       templateId: input.templateId,
       ownerId: input.ownerId,
-      status: input.status ?? "ALIVE",
+      campaigns: {
+        create: { campaignId: input.campaignId, status: input.status ?? "ALIVE" },
+      },
       displayName,
       summary: summary as unknown as Prisma.InputJsonValue,
       values: values as unknown as Prisma.InputJsonValue,
@@ -47,7 +52,7 @@ export async function createCharacter(input: {
 
 export async function updateCharacter(
   id: string,
-  patch: { values?: FieldValues; ownerId?: string; status?: Status },
+  patch: { values?: FieldValues; ownerId?: string },
 ) {
   const existing = await prisma.character.findUnique({
     where: { id },
@@ -57,7 +62,6 @@ export async function updateCharacter(
 
   const data: Prisma.CharacterUpdateInput = {};
   if (patch.ownerId) data.owner = { connect: { id: patch.ownerId } };
-  if (patch.status) data.status = patch.status;
 
   if (patch.values) {
     // The editor always sends the whole sheet, so replace rather than merge.
@@ -91,4 +95,13 @@ export async function renderCharacterPdf(id: string, flatten: boolean) {
     { flatten },
   );
   return { bytes, displayName: character.displayName };
+}
+
+/** Deletes a character and, once nothing else uses it, its portrait. */
+export async function deleteCharacter(id: string) {
+  const { portraitFileId } = await prisma.character.delete({
+    where: { id },
+    select: { portraitFileId: true },
+  });
+  if (portraitFileId) await deleteFileIfOrphaned(portraitFileId);
 }

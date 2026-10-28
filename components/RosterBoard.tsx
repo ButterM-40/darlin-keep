@@ -1,10 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { assignOwner, moveCharacter, removeCharacter } from "@/app/actions";
+import {
+  assignOwner,
+  joinCampaign,
+  leaveCampaign,
+  moveCharacter,
+  removeCharacter,
+} from "@/app/actions";
+import { AddCharacterDialog } from "@/components/AddCharacterDialog";
 import { CharacterCard, type RosterCharacter } from "@/components/CharacterCard";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { ROSTER_ORDER, STATUS_LABELS, type Status } from "@/lib/status";
 import type { OwnerOption } from "@/components/WhoAmI";
+import type { CardStyle } from "@/lib/themes";
 
 const BLURB: Record<Status, string> = {
   ACTIVE_PARTY: "Out on the road right now.",
@@ -19,33 +28,49 @@ const EMPTY: Record<Status, string> = {
 };
 
 /**
- * Holds the roster in local state so a drag lands instantly and the server
- * catches up behind it. Owner changes and deletions go through here too, so
- * a card never shows a value the board has already moved past.
+ * Holds one campaign's roster in local state so a drag lands instantly and the
+ * server catches up behind it. Owner changes, deletions and characters coming
+ * in from other campaigns go through here too, so a card never shows a value
+ * the board has already moved past.
  */
 export function RosterBoard({
+  campaignId,
+  campaignName,
   initialCharacters,
+  others: initialOthers,
   owners,
+  cardStyle,
 }: {
+  campaignId: string;
+  campaignName: string;
   initialCharacters: RosterCharacter[];
+  /** Characters not on this campaign's roster, who can be brought in. */
+  others: RosterCharacter[];
   owners: OwnerOption[];
+  cardStyle: CardStyle;
 }) {
   const [characters, setCharacters] = useState(initialCharacters);
+  const [others, setOthers] = useState(initialOthers);
   const [dragging, setDragging] = useState<string | null>(null);
   const [hovered, setHovered] = useState<Status | null>(null);
   const [, startTransition] = useTransition();
+  const { confirm, dialog } = useConfirm();
 
   function optimistic(
     apply: (current: RosterCharacter[]) => RosterCharacter[],
     persist: () => Promise<void>,
+    applyOthers?: (current: RosterCharacter[]) => RosterCharacter[],
   ) {
     const rollback = characters;
+    const rollbackOthers = others;
     setCharacters(apply);
+    if (applyOthers) setOthers(applyOthers);
     startTransition(async () => {
       try {
         await persist();
       } catch {
         setCharacters(rollback);
+        setOthers(rollbackOthers);
       }
     });
   }
@@ -55,7 +80,7 @@ export function RosterBoard({
     if (!character || character.status === status) return;
     optimistic(
       (current) => current.map((c) => (c.id === id ? { ...c, status } : c)),
-      () => moveCharacter(id, status),
+      () => moveCharacter(campaignId, id, status),
     );
   }
 
@@ -68,15 +93,58 @@ export function RosterBoard({
     );
   }
 
-  function remove(id: string) {
+  function bringIn(id: string) {
+    const character = others.find((c) => c.id === id);
+    if (!character) return;
+    // Arrives in the middle row; dragging it to the party is one move away.
+    const arriving = { ...character, status: "ALIVE" as const };
+    optimistic(
+      (current) => [arriving, ...current],
+      () => joinCampaign(campaignId, id, "ALIVE"),
+      (current) => current.filter((c) => c.id !== id),
+    );
+  }
+
+  /**
+   * A character on other rosters only leaves this one; a character nowhere
+   * else is deleted outright, as before campaigns existed.
+   */
+  async function remove(id: string) {
+    const character = characters.find((c) => c.id === id);
+    if (!character) return;
+    if (character.elsewhere.length === 0) {
+      const ok = await confirm({
+        title: `Delete ${character.displayName}?`,
+        body: (
+          <p>
+            Their sheet and everything attached to it (picture, notebooks, forge records) will be
+            gone for good.
+          </p>
+        ),
+        confirmLabel: "Delete character",
+      });
+      if (!ok) return;
+      optimistic(
+        (current) => current.filter((c) => c.id !== id),
+        () => removeCharacter(id),
+      );
+      return;
+    }
     optimistic(
       (current) => current.filter((c) => c.id !== id),
-      () => removeCharacter(id),
+      () => leaveCampaign(campaignId, id),
+      (current) =>
+        [...current, character].sort((a, b) => a.displayName.localeCompare(b.displayName)),
     );
   }
 
   return (
     <div className="space-y-10">
+      {dialog}
+      <div className="flex justify-end">
+        <AddCharacterDialog characters={others} campaignName={campaignName} onPick={bringIn} />
+      </div>
+
       {ROSTER_ORDER.map((status) => {
         const group = characters.filter((c) => c.status === status);
         const isTarget = hovered === status && dragging !== null;
@@ -125,11 +193,12 @@ export function RosterBoard({
                   {dragging ? EMPTY[status] : "Nobody here yet."}
                 </p>
               ) : (
-                <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <ul className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {group.map((character) => (
                     <CharacterCard
                       key={character.id}
                       character={character}
+                      cardStyle={cardStyle}
                       owners={owners}
                       isDragging={dragging === character.id}
                       onDragStart={() => setDragging(character.id)}
@@ -138,7 +207,7 @@ export function RosterBoard({
                         setHovered(null);
                       }}
                       onOwnerChange={(ownerId) => changeOwner(character.id, ownerId)}
-                      onDelete={() => remove(character.id)}
+                      onRemove={() => void remove(character.id)}
                     />
                   ))}
                 </ul>

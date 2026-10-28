@@ -319,7 +319,7 @@ export function Corkboard({
       >
         {/* Corkboard surface, drawn once and scaled with the items. */}
         <div
-          className="absolute left-0 top-0 origin-top-left bg-[#2a2118] bg-[radial-gradient(circle_at_1px_1px,rgba(217,180,91,0.10)_1px,transparent_0)] bg-[size:22px_22px] ring-1 ring-ink-500/60"
+          className="absolute left-0 top-0 origin-top-left bg-cork bg-[radial-gradient(circle_at_1px_1px,color-mix(in_srgb,var(--color-gold)_10%,transparent)_1px,transparent_0)] bg-[size:22px_22px] ring-1 ring-ink-500/60"
           style={{
             width: BOARD_WIDTH,
             height: BOARD_HEIGHT,

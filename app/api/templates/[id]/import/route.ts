@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { readValues } from "@/lib/pdf/fillTemplate";
+import { getCurrentCampaign } from "@/lib/campaigns";
 import { createCharacter } from "@/lib/characters";
 import { isStatus } from "@/lib/status";
 
@@ -50,6 +51,7 @@ export async function POST(
     const character = await createCharacter({
       templateId: id,
       ownerId,
+      campaignId: (await getCurrentCampaign()).id,
       status: isStatus(statusRaw) ? statusRaw : "ALIVE",
       values: matched,
     });

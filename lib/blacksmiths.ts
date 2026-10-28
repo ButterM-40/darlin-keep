@@ -51,12 +51,20 @@ function serialize(row: BlacksmithRow) {
 
 export type BlacksmithView = ReturnType<typeof serialize>;
 
-/** Every blacksmith, plus the characters that could still become one. */
-export async function listBlacksmiths() {
+/**
+ * The blacksmiths on one campaign's roster, plus the characters there who
+ * could still become one. A smith on several rosters keeps one shared stock.
+ */
+export async function listBlacksmiths(campaignId: string) {
+  const inCampaign = { campaigns: { some: { campaignId } } };
   const [rows, candidates] = await Promise.all([
-    prisma.blacksmith.findMany({ include, orderBy: { createdAt: "asc" } }),
+    prisma.blacksmith.findMany({
+      where: { character: inCampaign },
+      include,
+      orderBy: { createdAt: "asc" },
+    }),
     prisma.character.findMany({
-      where: { blacksmith: { is: null } },
+      where: { ...inCampaign, blacksmith: { is: null } },
       select: { id: true, displayName: true, owner: { select: { name: true } } },
       orderBy: { displayName: "asc" },
     }),

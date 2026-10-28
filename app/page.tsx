@@ -1,47 +1,74 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@/lib/generated/prisma/client";
+import { getCurrentCampaign } from "@/lib/campaigns";
+import { getPartyLook } from "@/lib/themeStore";
 import { RosterBoard } from "@/components/RosterBoard";
 import type { RosterCharacter } from "@/components/CharacterCard";
 import type { CharacterSummary } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
+const rosterInclude = {
+  owner: true,
+  template: { select: { name: true } },
+  campaigns: {
+    select: { status: true, campaign: { select: { id: true, name: true } } },
+    orderBy: { campaign: { createdAt: "asc" } },
+  },
+} satisfies Prisma.CharacterInclude;
+
+type RosterRow = Prisma.CharacterGetPayload<{ include: typeof rosterInclude }>;
+
 export default async function RosterPage() {
-  const [characters, owners, templateCount] = await Promise.all([
+  const campaign = await getCurrentCampaign();
+  const [characters, others, owners, templateCount, look] = await Promise.all([
     prisma.character.findMany({
+      where: { campaigns: { some: { campaignId: campaign.id } } },
       orderBy: { updatedAt: "desc" },
-      include: { owner: true, template: { select: { name: true } } },
+      include: rosterInclude,
+    }),
+    // Everyone else in the world, for bringing into this campaign.
+    prisma.character.findMany({
+      where: { campaigns: { none: { campaignId: campaign.id } } },
+      orderBy: { displayName: "asc" },
+      include: rosterInclude,
     }),
     prisma.owner.findMany({ orderBy: { name: "asc" } }),
     prisma.template.count(),
+    getPartyLook(),
   ]);
 
   if (templateCount === 0) {
     return <EmptyState />;
   }
 
-  const roster: RosterCharacter[] = characters.map((character) => ({
-    id: character.id,
-    displayName: character.displayName,
-    status: character.status,
-    summary: (character.summary ?? {}) as CharacterSummary,
-    templateName: character.template.name,
-    owner: character.owner,
-  }));
+  function toRoster(character: RosterRow): RosterCharacter {
+    return {
+      id: character.id,
+      displayName: character.displayName,
+      status:
+        character.campaigns.find((m) => m.campaign.id === campaign.id)?.status ?? "ALIVE",
+      summary: (character.summary ?? {}) as CharacterSummary,
+      templateName: character.template.name,
+      owner: character.owner,
+      portraitFileId: character.portraitFileId,
+      elsewhere: character.campaigns
+        .filter((m) => m.campaign.id !== campaign.id)
+        .map((m) => m.campaign.name),
+    };
+  }
 
   return (
-    <div>
-      <div className="mb-8 flex items-center justify-end">
-        <Link
-          href="/characters/new"
-          className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-ink-900 hover:bg-ember/90"
-        >
-          New character
-        </Link>
-      </div>
-
-      <RosterBoard initialCharacters={roster} owners={owners} />
-    </div>
+    <RosterBoard
+      key={campaign.id}
+      campaignId={campaign.id}
+      campaignName={campaign.name}
+      initialCharacters={characters.map(toRoster)}
+      others={others.map(toRoster)}
+      owners={owners}
+      cardStyle={look.cardStyle}
+    />
   );
 }
 

@@ -12,7 +12,13 @@ import {
   type DocKind,
 } from "@/lib/documents";
 
-export function NewDocumentForm({ owners }: { owners: OwnerOption[] }) {
+export function NewDocumentForm({
+  owners,
+  campaignName,
+}: {
+  owners: OwnerOption[];
+  campaignName: string;
+}) {
   const router = useRouter();
   const { ownerId } = useCurrentOwner(owners);
   const [kind, setKind] = useState<DocKind>("PDF");
@@ -133,6 +139,16 @@ export function NewDocumentForm({ owners }: { owners: OwnerOption[] }) {
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="flex items-start gap-2.5 text-sm">
+        <input type="checkbox" name="shared" className="mt-0.5 accent-ember" />
+        <span>
+          <span className="text-parchment">Share with every campaign</span>
+          <span className="block text-xs text-parchment-dim">
+            Otherwise it only shows up in {campaignName}.
+          </span>
+        </span>
       </label>
 
       {error ? <p className="text-sm text-blood">{error}</p> : null}

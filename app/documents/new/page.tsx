@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { getCurrentCampaign } from "@/lib/campaigns";
 import { NewDocumentForm } from "@/components/NewDocumentForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewDocumentPage() {
-  const owners = await prisma.owner.findMany({ orderBy: { name: "asc" } });
+  const [owners, campaign] = await Promise.all([
+    prisma.owner.findMany({ orderBy: { name: "asc" } }),
+    getCurrentCampaign(),
+  ]);
 
   return (
     <div className="mx-auto max-w-lg">
@@ -16,7 +20,7 @@ export default async function NewDocumentPage() {
         Add document
       </h1>
 
-      <NewDocumentForm owners={owners} />
+      <NewDocumentForm owners={owners} campaignName={campaign.name} />
     </div>
   );
 }

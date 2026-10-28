@@ -41,7 +41,7 @@ export default async function CharacterNotebooksPage({
         </h1>
         <span
           className="rounded-full px-2 py-0.5 text-[11px] font-medium text-ink-900"
-          style={{ background: character.owner.color ?? "#8a7f6d" }}
+          style={{ background: character.owner.color ?? "var(--color-owner-default)" }}
         >
           {character.owner.name}
         </span>

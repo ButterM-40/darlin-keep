@@ -134,11 +134,12 @@ export async function getFile(
 
 /** Removes a file, and its bytes, only once nothing references it. */
 export async function deleteFileIfOrphaned(id: string): Promise<void> {
-  const [asDocument, asBoardItem] = await Promise.all([
+  const [asDocument, asBoardItem, asPortrait] = await Promise.all([
     prisma.document.count({ where: { fileId: id } }),
     prisma.boardItem.count({ where: { fileId: id } }),
+    prisma.character.count({ where: { portraitFileId: id } }),
   ]);
-  if (asDocument > 0 || asBoardItem > 0) return;
+  if (asDocument > 0 || asBoardItem > 0 || asPortrait > 0) return;
 
   const file = await prisma.storedFile.findUnique({
     where: { id },

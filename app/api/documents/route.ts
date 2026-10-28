@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
 import { prisma } from "@/lib/db";
+import { getCurrentCampaign } from "@/lib/campaigns";
 import { MAX_UPLOAD_BYTES, formatBytes, isDocKind, normalizeUrl } from "@/lib/documents";
 import { putFile } from "@/lib/storage";
 
@@ -14,6 +15,8 @@ export async function POST(request: Request) {
   const title = String(form.get("title") ?? "").trim();
   const note = String(form.get("note") ?? "").trim() || null;
   const ownerId = String(form.get("ownerId") ?? "") || null;
+  // Filed under the campaign this browser is on, unless it is for everyone.
+  const campaignId = form.get("shared") === "on" ? null : (await getCurrentCampaign()).id;
 
   if (!isDocKind(kind)) {
     return NextResponse.json({ error: "Pick a document type." }, { status: 400 });
@@ -32,14 +35,14 @@ export async function POST(request: Request) {
         );
       }
       const doc = await prisma.document.create({
-        data: { kind, title, note, ownerId, url },
+        data: { kind, title, note, ownerId, campaignId, url },
       });
       return NextResponse.json({ id: doc.id });
     }
 
     if (kind === "BOARD") {
       const doc = await prisma.document.create({
-        data: { kind, title, note, ownerId },
+        data: { kind, title, note, ownerId, campaignId },
       });
       return NextResponse.json({ id: doc.id });
     }
@@ -77,6 +80,7 @@ export async function POST(request: Request) {
         title,
         note,
         ownerId,
+        campaignId,
         fileId: stored.id,
         pageCount: pageSizes.length,
         pageSizes,

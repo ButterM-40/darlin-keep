@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { PdfViewer } from "@/components/PdfViewer";
+import { PortraitShowcase, PortraitThumb } from "@/components/PortraitShowcase";
 import type { PageSize } from "@/components/SheetSurface";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function CharacterSheetPage({
       displayName: true,
       summary: true,
       updatedAt: true,
+      portraitFileId: true,
       owner: true,
       template: { select: { name: true, pageSizes: true } },
     },
@@ -35,11 +37,14 @@ export default async function CharacterSheetPage({
     .join(" · ");
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="relative mx-auto max-w-4xl">
+      <PortraitShowcase fileId={character.portraitFileId} name={character.displayName} />
+
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <Link href="/" className="text-sm text-parchment-dim hover:text-parchment">
           ← Roster
         </Link>
+        <PortraitThumb fileId={character.portraitFileId} name={character.displayName} />
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-2xl text-parchment">
             {character.displayName}
@@ -48,7 +53,7 @@ export default async function CharacterSheetPage({
         </div>
         <span
           className="rounded-full px-2 py-0.5 text-[11px] font-medium text-ink-900"
-          style={{ background: character.owner.color ?? "#8a7f6d" }}
+          style={{ background: character.owner.color ?? "var(--color-owner-default)" }}
         >
           {character.owner.name}
         </span>

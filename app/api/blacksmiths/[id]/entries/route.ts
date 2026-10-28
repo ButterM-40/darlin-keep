@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { clearHistory, recordAttempt } from "@/lib/blacksmiths";
+import { postRollToDiscord, readRollShare } from "@/lib/discord";
 
 /** Records a craft or repair attempt and spends its tokens and ingots. */
 export async function POST(
@@ -32,6 +33,14 @@ export async function POST(
   }
   if ("error" in outcome) {
     return NextResponse.json({ error: outcome.error }, { status: 409 });
+  }
+
+  // Crafts and repairs carry the roll so the party's Discord can see it. Sent
+  // after the response, so a slow or failing Discord never holds up the forge.
+  const share = readRollShare(body.share);
+  if (share) {
+    const nextWeek = body.nextWeek === true;
+    after(() => postRollToDiscord(outcome.blacksmith, share, { tokens, ingots, metal, nextWeek }));
   }
   return NextResponse.json(outcome.blacksmith);
 }

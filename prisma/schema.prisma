@@ -7,7 +7,7 @@ datasource db {
   provider = "postgresql"
 }
 
-/// A character occupies exactly one row on the roster.
+/// A character occupies exactly one row on each campaign's roster.
 enum Status {
   ACTIVE_PARTY
   ALIVE
@@ -61,25 +61,53 @@ model Owner {
 }
 
 model Character {
-  id          String   @id @default(cuid())
-  templateId  String
-  template    Template @relation(fields: [templateId], references: [id])
-  ownerId     String
-  owner       Owner    @relation(fields: [ownerId], references: [id])
-  status      Status   @default(ALIVE)
+  id             String           @id @default(cuid())
+  templateId     String
+  template       Template         @relation(fields: [templateId], references: [id])
+  ownerId        String
+  owner          Owner            @relation(fields: [ownerId], references: [id])
+  /// Where the character stands is kept per campaign, on CampaignMember.
+  campaigns      CampaignMember[]
   /// Denormalised from the field carrying the displayName role, for the roster.
-  displayName String
+  displayName    String
   /// Denormalised roster summary: { species, classLevel, hp, xp }.
-  summary     Json
+  summary        Json
   /// The sheet itself: { [pdfFieldName]: value }.
-  values      Json
-  blacksmith  Blacksmith?
-  notebooks   Notebook[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  values         Json
+  blacksmith     Blacksmith?
+  notebooks      Notebook[]
+  /// Optional picture for the roster card. No picture, no picture slot.
+  portraitFileId String?
+  portrait       StoredFile?      @relation("CharacterPortrait", fields: [portraitFileId], references: [id], onDelete: SetNull)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
-  @@index([status])
   @@index([ownerId])
+}
+
+/// A campaign the party plays. They all share one world, so the same
+/// character can turn up in several.
+model Campaign {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  members   CampaignMember[]
+  documents Document[]
+  createdAt DateTime         @default(now())
+}
+
+/// A character's place in one campaign. Status lives here rather than on the
+/// character: someone can be out on the road in one campaign and benched in
+/// another.
+model CampaignMember {
+  campaignId  String
+  campaign    Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  status      Status    @default(ALIVE)
+  joinedAt    DateTime  @default(now())
+
+  @@id([campaignId, characterId])
+  @@index([characterId])
 }
 
 /// What a document actually is. A PDF and a board hold uploaded bytes; a link
@@ -92,12 +120,15 @@ enum DocKind {
 
 /// Campaign material: handouts, maps, reference links, image boards.
 model Document {
-  id        String   @id @default(cuid())
-  kind      DocKind
-  title     String
-  note      String?
-  ownerId   String?
-  owner     Owner?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  id         String    @id @default(cuid())
+  kind       DocKind
+  title      String
+  note       String?
+  ownerId    String?
+  owner      Owner?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  /// The campaign it belongs to, or null for material every campaign shares.
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   /// PDF only.
   fileId    String?
@@ -106,15 +137,16 @@ model Document {
   pageSizes Json?
 
   /// LINK only.
-  url       String?
+  url String?
 
   /// BOARD only.
-  items     BoardItem[]
+  items BoardItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([kind])
+  @@index([campaignId])
 }
 
 /// Uploaded bytes. Kept behind lib/storage.ts so the backing store can change
@@ -135,6 +167,7 @@ model StoredFile {
   createdAt  DateTime    @default(now())
   documents  Document[]
   boardItems BoardItem[]
+  portraits  Character[] @relation("CharacterPortrait")
 }
 
 /// One image pinned to a board, at the position and size it was left.
@@ -200,4 +233,36 @@ model Notebook {
   updatedAt   DateTime  @updatedAt
 
   @@index([characterId, createdAt])
+}
+
+/// A theme the party saved. The built-in themes live in lib/themes.ts and are
+/// never stored; everything here went through sanitizeTheme first.
+model Theme {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  mood      String   @default("")
+  /// "dark" or "light".
+  mode      String
+  /// A name from FONTS in lib/themes.ts.
+  font      String
+  /// { [slot]: "#rrggbb" }.
+  colors    Json
+  /// Optional { from: "MM-DD", to: "MM-DD" }.
+  season    Json?
+  /// Decoration names from EFFECTS in lib/themes.ts.
+  effects   String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Party-wide look. One row, id "party". Each browser may still override the
+/// theme with a cookie.
+model PartySettings {
+  id        String  @id @default("party")
+  /// A built-in theme id or a Theme.id.
+  themeId   String  @default("ember-hearth")
+  /// Whether a theme with a season takes over while its dates are on.
+  seasonal  Boolean @default(true)
+  /// How characters with a picture are drawn: avatar, banner or portrait.
+  cardStyle String  @default("banner")
 }

@@ -48,7 +48,7 @@ export default async function OwnersPage() {
             <span
               aria-hidden
               className="size-3 rounded-full ring-1 ring-ink-500"
-              style={{ background: owner.color ?? "#8a7f6d" }}
+              style={{ background: owner.color ?? "var(--color-owner-default)" }}
             />
             <span className="text-parchment">{owner.name}</span>
             <span className="text-xs text-parchment-dim">

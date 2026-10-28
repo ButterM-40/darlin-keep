@@ -3,18 +3,40 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { createCharacter } from "@/lib/characters";
+import { getCurrentCampaign } from "@/lib/campaigns";
+import { createCharacter, deleteCharacter } from "@/lib/characters";
 import { isStatus } from "@/lib/status";
 import { createTemplate } from "@/lib/templates";
 import { deleteFileIfOrphaned } from "@/lib/storage";
 
 // The roster is a client component holding its own optimistic state, so these
-// take plain arguments rather than form data.
+// take plain arguments rather than form data. They name the campaign rather
+// than reading the cookie, so switching campaigns in another tab mid-drag
+// cannot land a move on the wrong roster.
 
-export async function moveCharacter(id: string, status: string) {
+export async function moveCharacter(campaignId: string, id: string, status: string) {
   if (!isStatus(status)) return;
 
-  await prisma.character.update({ where: { id }, data: { status } });
+  await prisma.campaignMember.update({
+    where: { campaignId_characterId: { campaignId, characterId: id } },
+    data: { status },
+  });
+  revalidatePath("/");
+}
+
+/** Brings a character from elsewhere in the world onto this campaign's roster. */
+export async function joinCampaign(campaignId: string, id: string, status: string) {
+  await prisma.campaignMember.upsert({
+    where: { campaignId_characterId: { campaignId, characterId: id } },
+    update: {},
+    create: { campaignId, characterId: id, status: isStatus(status) ? status : "ALIVE" },
+  });
+  revalidatePath("/");
+}
+
+/** Takes a character off this campaign's roster; their sheet is untouched. */
+export async function leaveCampaign(campaignId: string, id: string) {
+  await prisma.campaignMember.deleteMany({ where: { campaignId, characterId: id } });
   revalidatePath("/");
 }
 
@@ -26,7 +48,7 @@ export async function assignOwner(id: string, ownerId: string) {
 }
 
 export async function removeCharacter(id: string) {
-  await prisma.character.delete({ where: { id } });
+  await deleteCharacter(id);
   revalidatePath("/");
 }
 
@@ -60,6 +82,7 @@ export async function newCharacter(formData: FormData) {
   const character = await createCharacter({
     templateId,
     ownerId,
+    campaignId: (await getCurrentCampaign()).id,
     status: isStatus(status) ? status : "ALIVE",
   });
   revalidatePath("/");

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getCurrentCampaign } from "@/lib/campaigns";
 import { createBlacksmith, listBlacksmiths } from "@/lib/blacksmiths";
 
 export async function GET() {
-  return NextResponse.json(await listBlacksmiths());
+  return NextResponse.json(await listBlacksmiths((await getCurrentCampaign()).id));
 }
 
 /** Makes an existing character a blacksmith. */

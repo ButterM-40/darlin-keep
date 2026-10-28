@@ -99,7 +99,8 @@ const summary = character.summary as Record<string, string>;
 check("roster summary derived",
   summary.species === "Human" && summary.classLevel === "Smith Lv. 1" && summary.hp === "0/10",
   JSON.stringify(summary));
-check("landed in Active Party", character.status === "ACTIVE_PARTY");
+const membership = await prisma.campaignMember.findFirst({ where: { characterId: character.id } });
+check("landed in Active Party", membership?.status === "ACTIVE_PARTY");
 
 // 4. Edit through the API ------------------------------------------------------
 console.log("\n4. Save an edit the way the editor does");

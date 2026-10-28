@@ -43,7 +43,7 @@ export default async function DocumentPage({
         {doc.owner ? (
           <span
             className="rounded-full px-2 py-0.5 text-[11px] font-medium text-ink-900"
-            style={{ background: doc.owner.color ?? "#8a7f6d" }}
+            style={{ background: doc.owner.color ?? "var(--color-owner-default)" }}
           >
             {doc.owner.name}
           </span>
